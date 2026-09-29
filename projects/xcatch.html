@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>xCatch Defensive Evaluation | Malcolm Munnich</title><link rel="stylesheet" href="../style.css"></head><body>
+<div class="nav"><div class="container navin">
+  <a class="logo" href="../index.html">Malcolm Munnich</a>
+  <div class="navlinks">
+    <a href="../index.html#projects">Projects</a>
+    <a href="../index.html#skills">Skills</a>
+    <a href="../index.html#data-policy">Data policy</a>
+  </div>
+</div></div>
+
+<header class="case-hero"><div class="container"><div class="kicker">Modeling case study</div><h1 class="case-title">xCatch Defensive Evaluation</h1>
+<p class="lead">Built an opportunity-based defensive model to estimate expected outcomes on balls in play and quantify observed performance relative to that expectation.</p><div style="margin-top:18px"><span class="tag">Python</span><span class="tag">kNN / classification</span><span class="tag">Fielding</span><span class="tag">Expected outcomes</span><span class="tag">Run values</span></div></div></header>
+<section class="section"><div class="container"><h2>Problem</h2><p>Traditional fielding totals tell you what happened, but not how difficult each opportunity was. The model therefore starts with the opportunity and asks: given the measurable characteristics of the ball and context, how often would an average defender be expected to convert it?</p></div></section>
+<section class="section"><div class="container"><h2>Approach</h2><div class="metricrow"><div class="metric"><div class="num">1</div><div class="meta">Opportunity model</div></div><div class="metric"><div class="num">2</div><div class="meta">Observed vs expected</div></div><div class="metric"><div class="num">3</div><div class="meta">Run-value translation</div></div></div>
+<p style="margin-top:20px">The broader system joins batted-ball observations to box-score fielding events, estimates opportunity difficulty, calculates opportunity above expected, and translates those differences into run values.</p></div></section>
+<section class="section"><div class="container"><h2>Interpretation</h2><div class="grid"><div class="card"><h3>OAE</h3><p class="meta">How many opportunities a player converted above or below the model expectation.</p></div><div class="card"><h3>RAA</h3><p class="meta">A run-value representation of the defensive contribution after weighting outcomes.</p></div></div></div></section>
+<section class="section"><div class="container"><h2>Important limitations</h2><ul><li>Model performance depends on representative training opportunities.</li><li>Position-specific responsibilities need to be handled carefully.</li><li>Double-play and catcher-framing components are treated separately from the core fielding framework.</li><li>Proprietary tracking observations are not included in the public repository.</li></ul></div></section>
+
+<footer class="footer"><div class="container">
+  <div>Malcolm Munnich · Data Analytics · Statistical Modeling · Data Visualization</div>
+  <div style="margin-top:8px">Portfolio demos use synthetic or public/example data. Proprietary source data is intentionally excluded.</div>
+</div></footer>
+</body></html>

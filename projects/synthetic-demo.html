@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sanitized Baseball Demo | Malcolm Munnich</title><link rel="stylesheet" href="../style.css"></head><body>
+<div class="nav"><div class="container navin">
+  <a class="logo" href="../index.html">Malcolm Munnich</a>
+  <div class="navlinks">
+    <a href="../index.html#projects">Projects</a>
+    <a href="../index.html#skills">Skills</a>
+    <a href="../index.html#data-policy">Data policy</a>
+  </div>
+</div></div>
+
+<header class="case-hero"><div class="container"><div class="kicker">Safe public demo</div><h1 class="case-title">Synthetic pitch & batted-ball explorer</h1>
+<p class="lead">This page intentionally generates fake observations in the browser. It demonstrates the interaction pattern without exposing any TrackMan export, player identity, or workplace dataset.</p></div></header>
+<section class="section"><div class="container">
+<div class="demo"><button class="btn primary" id="regen">Generate synthetic sample</button><div id="out" style="margin-top:20px"></div></div>
+<div class="note" style="margin-top:20px"><strong>Data guarantee:</strong> the values below are generated from a small deterministic browser-side formula. They are not copied from a real game or player.</div>
+</div></section>
+<script>
+function render(){
+ let rows=[];
+ for(let i=0;i<24;i++){
+   let ev=82 + ((i*17)%31), la=-12+((i*23)%55), x=90+((i*19)%120), y=15+((i*29)%70);
+   rows.push({ev,la,x,y});
+ }
+ let avg=(rows.reduce((a,b)=>a+b.ev,0)/rows.length).toFixed(1);
+ let hard=rows.filter(r=>r.ev>=95).length;
+ document.getElementById('out').innerHTML=
+   '<div class="metricrow"><div class="metric"><div class="num">'+rows.length+'</div><div class="meta">Synthetic observations</div></div>'+
+   '<div class="metric"><div class="num">'+avg+'</div><div class="meta">Mean exit velocity (fake)</div></div>'+
+   '<div class="metric"><div class="num">'+hard+'</div><div class="meta">Hard-contact events (fake)</div></div></div>'+
+   '<div style="margin-top:22px" class="meta">Example observation table</div>'+
+   '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;margin-top:8px"><tr><th style="text-align:left;padding:8px;border-bottom:1px solid #2b3858">Event</th><th style="text-align:left;padding:8px;border-bottom:1px solid #2b3858">EV</th><th style="text-align:left;padding:8px;border-bottom:1px solid #2b3858">LA</th><th style="text-align:left;padding:8px;border-bottom:1px solid #2b3858">X</th><th style="text-align:left;padding:8px;border-bottom:1px solid #2b3858">Y</th></tr>'+
+   rows.slice(0,8).map((r,i)=>'<tr><td style="padding:8px;border-bottom:1px solid #1d2942">Synthetic '+(i+1)+'</td><td style="padding:8px;border-bottom:1px solid #1d2942">'+r.ev+'</td><td style="padding:8px;border-bottom:1px solid #1d2942">'+r.la+'</td><td style="padding:8px;border-bottom:1px solid #1d2942">'+r.x+'</td><td style="padding:8px;border-bottom:1px solid #1d2942">'+r.y+'</td></tr>').join('')+'</table></div>';
+}
+document.getElementById('regen').onclick=render; render();
+</script>
+<footer class="footer"><div class="container">
+  <div>Malcolm Munnich · Data Analytics · Statistical Modeling · Data Visualization</div>
+  <div style="margin-top:8px">Portfolio demos use synthetic or public/example data. Proprietary source data is intentionally excluded.</div>
+</div></footer>
+</body></html>
