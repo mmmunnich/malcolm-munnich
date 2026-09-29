@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCL Win Probability</title>
+<style>
+  :root {
+    --field: #14332A;
+    --field-dark: #0D2620;
+    --cream: #F2EEE3;
+    --paper: #FAF7EF;
+    --ink: #201D18;
+    --ink-soft: #5B5648;
+    --brass: #C99A3E;
+    --brass-bright: #E3B655;
+    --clay: #A8452F;
+    --clay-bright: #C25A3F;
+    --line: #D8D0BC;
+    --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, 'Courier New', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body { padding: 20px 14px 60px; }
+  .wrap { max-width: 640px; margin: 0 auto; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin: 0 0 4px;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    margin: 0 0 4px;
+    color: var(--field);
+  }
+  .sub {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    margin: 0 0 22px;
+    line-height: 1.5;
+  }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(20,51,42,0.04);
+  }
+  .card h2 {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+    font-weight: 700;
+  }
+
+  /* --- scoreboard readout --- */
+  .readout {
+    background: var(--field);
+    border-radius: 12px;
+    padding: 22px 18px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .readout::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(180deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 3px);
+    pointer-events: none;
+  }
+  .readout .decided {
+    font-family: var(--mono);
+    color: var(--brass-bright);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 10px 0;
+  }
+  .wp-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .wp-team {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(250,247,239,0.55);
+  }
+  .wp-num {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 40px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    text-shadow: 0 0 18px currentColor;
+  }
+  .wp-num.home { color: var(--brass-bright); }
+  .wp-num.away { color: #D98872; }
+  .wp-bar {
+    height: 10px;
+    border-radius: 6px;
+    background: #D98872;
+    margin-top: 14px;
+    overflow: hidden;
+    display: flex;
+  }
+  .wp-bar-home {
+    background: var(--brass-bright);
+    height: 100%;
+    transition: width 0.25s ease;
+  }
+  .wp-caption {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: rgba(250,247,239,0.45);
+    margin-top: 8px;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+
+  /* --- diamond --- */
+  .diamond-row { display: flex; gap: 22px; align-items: center; }
+  .diamond-wrap { flex: 0 0 auto; }
+  .diamond-base {
+    cursor: pointer;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+  }
+  .diamond-base:hover { stroke: var(--brass); stroke-width: 2.5; }
+  .side-controls { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+
+  .field-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .outs-row { display: flex; gap: 8px; }
+  .out-dot {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--field);
+    cursor: pointer;
+    background: transparent;
+    transition: background 0.15s ease;
+  }
+  .out-dot.filled { background: var(--clay); border-color: var(--clay); }
+
+  .stepper { display: flex; align-items: center; gap: 10px; }
+  .stepper button {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--cream);
+    color: var(--field);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--mono);
+  }
+  .stepper button:active { background: var(--brass); color: var(--paper); }
+  .stepper .val {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 16px;
+    min-width: 74px;
+    text-align: center;
+  }
+  .half-toggle {
+    display: flex; border: 1px solid var(--field); border-radius: 8px; overflow: hidden;
+  }
+  .half-toggle button {
+    flex: 1; border: none; background: var(--paper); color: var(--field);
+    font-family: var(--mono); font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 8px 6px; cursor: pointer; text-transform: uppercase;
+  }
+  .half-toggle button.active { background: var(--field); color: var(--brass-bright); }
+
+  .scores-row { display: flex; gap: 12px; margin-top: 16px; }
+  .score-box { flex: 1; }
+  .score-box input {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    padding: 10px 6px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--cream);
+    color: var(--ink);
+  }
+  .score-box input:focus { outline: 2px solid var(--brass); border-color: var(--brass); }
+  .score-box select {
+    width: 100%;
+    font-family: var(--sans);
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 10px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--cream);
+    color: var(--ink);
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .score-box select:focus { outline: 2px solid var(--brass); border-color: var(--brass); }
+  .matchup-note {
+    font-size: 11.5px; color: var(--ink-soft); line-height: 1.5; margin-top: 10px;
+  }
+
+  /* --- dataset panel --- */
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono); font-size: 13px; margin-bottom: 4px;
+  }
+  .stat-row .k { color: var(--ink-soft); }
+  .stat-row .v { font-weight: 700; }
+
+  .game-list { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .game-item {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12.5px; padding: 6px 0; border-bottom: 1px dashed var(--line);
+    gap: 8px;
+  }
+  .game-item:last-child { border-bottom: none; }
+  .game-name { font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em;
+    padding: 2px 7px; border-radius: 20px; text-transform: uppercase; white-space: nowrap;
+  }
+  .badge.ok { background: rgba(20,51,42,0.09); color: var(--field); }
+  .badge.warn { background: rgba(168,69,47,0.12); color: var(--clay); }
+
+  .upload-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: var(--field); color: var(--brass-bright);
+    border: none; border-radius: 8px; padding: 10px 16px;
+    cursor: pointer; margin-top: 14px;
+  }
+  .upload-btn:hover { background: var(--field-dark); }
+  .upload-btn.secondary {
+    background: transparent; color: var(--field); border: 1px solid var(--line); margin-left: 8px;
+  }
+  .upload-btn.secondary:hover { background: rgba(20,51,42,0.06); }
+  #fileInput, #importInput { display: none; }
+  .upload-msg {
+    font-family: var(--mono); font-size: 11.5px; margin-top: 10px;
+    color: var(--ink-soft); line-height: 1.5; white-space: pre-line;
+  }
+  .reset-link {
+    font-family: var(--mono); font-size: 10.5px; color: var(--ink-soft);
+    text-decoration: underline; cursor: pointer; margin-top: 10px; display: inline-block;
+  }
+
+  .note {
+    font-size: 12px; color: var(--ink-soft); line-height: 1.6; margin: 0;
+  }
+  .note strong { color: var(--ink); }
+  .note ul { margin: 8px 0 0; padding-left: 18px; }
+  .note li { margin-bottom: 6px; }
+
+  @media (max-width: 420px) {
+    .diamond-row { flex-direction: column; align-items: stretch; }
+    .wp-num { font-size: 32px; }
+  }
+
+  .tab-bar {
+    display: flex; gap: 4px; margin: 20px 0 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tab-btn {
+    flex: 1; text-align: center;
+    font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: transparent; border: none; border-bottom: 2px solid transparent;
+    color: var(--ink-soft); padding: 11px 4px; cursor: pointer;
+  }
+  .tab-btn.active { color: var(--field); border-bottom-color: var(--brass); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .diag-row { display: flex; gap: 12px; margin-bottom: 14px; }
+
+  .chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .chart-team { font-family: var(--sans); font-weight: 700; font-size: 15px; }
+  .chart-score { font-family: var(--mono); font-weight: 700; font-size: 20px; }
+  .chart-final { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; text-align: center; }
+  .chart-callout { font-family: var(--mono); font-size: 13px; color: var(--ink-soft); margin: 10px 0 0; }
+  .chart-callout .v { color: var(--field); font-weight: 700; font-size: 15px; }
+  #chartSvgWrap { position: relative; }
+  #chartTooltip {
+    display: none; position: absolute; top: 0; left: 0; z-index: 5;
+    background: var(--cream); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; font-family: var(--sans); font-size: 12px; line-height: 1.45;
+    max-width: 190px; pointer-events: none; box-shadow: 0 2px 8px rgba(20,51,42,0.15);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">California Collegiate League</p>
+  <h1>Win Probability</h1>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabBtnProb" onclick="showTab('probability')">Probability</button>
+    <button class="tab-btn" id="tabBtnChart" onclick="showTab('chart')">Chart</button>
+    <button class="tab-btn" id="tabBtnData" onclick="showTab('data')">Data</button>
+  </div>
+
+  <div class="tab-panel active" id="tabProbability">
+
+  <div class="readout" id="readout">
+    <div class="wp-row">
+      <div>
+        <div class="wp-team">Home</div>
+        <div class="wp-num home" id="homeWp">50.0%</div>
+      </div>
+      <div style="text-align:right">
+        <div class="wp-team">Away</div>
+        <div class="wp-num away" id="awayWp">50.0%</div>
+      </div>
+    </div>
+    <div class="wp-bar"><div class="wp-bar-home" id="wpBar" style="width:50%"></div></div>
+    <div class="wp-caption" id="wpCaption">TOP 1ST &middot; 0 OUT &middot; BASES EMPTY &middot; 0&ndash;0</div>
+  </div>
+
+  <div class="card">
+    <div class="scores-row">
+      <div class="score-box">
+        <span class="field-label">Home team</span>
+        <select id="homeTeamSel" onchange="onTeamChange()"></select>
+      </div>
+      <div class="score-box">
+        <span class="field-label">Away team</span>
+        <select id="awayTeamSel" onchange="onTeamChange()"></select>
+      </div>
+    </div>
+
+    <div class="diamond-row" style="margin-top:18px">
+      <div class="diamond-wrap">
+        <svg width="150" height="140" viewBox="0 0 150 140">
+          <g transform="translate(75,72)">
+            <path d="M0,-52 L52,0 L0,52 L-52,0 Z" fill="none" stroke="#14332A" stroke-width="2.5" opacity="0.35"/>
+            <circle id="base2" class="diamond-base" cx="0" cy="-52" r="15" fill="#FAF7EF" stroke="#14332A" stroke-width="2"/>
+            <circle id="base1" class="diamond-base" cx="52" cy="0" r="15" fill="#FAF7EF" stroke="#14332A" stroke-width="2"/>
+            <circle id="base3" class="diamond-base" cx="-52" cy="0" r="15" fill="#FAF7EF" stroke="#14332A" stroke-width="2"/>
+            <rect x="-9" y="43" width="18" height="18" transform="rotate(45 0 52)" fill="#14332A" opacity="0.5"/>
+          </g>
+        </svg>
+      </div>
+      <div class="side-controls">
+        <div>
+          <span class="field-label">Outs</span>
+          <div class="outs-row">
+            <div class="out-dot" data-out="0" onclick="setOuts(0)"></div>
+            <div class="out-dot" data-out="1" onclick="setOuts(1)"></div>
+            <div class="out-dot" data-out="2" onclick="setOuts(2)"></div>
+          </div>
+        </div>
+        <div>
+          <span class="field-label">Inning</span>
+          <div class="stepper">
+            <button onclick="stepInning(-1)">&minus;</button>
+            <span class="val" id="inningVal">1st</span>
+            <button onclick="stepInning(1)">+</button>
+          </div>
+        </div>
+        <div>
+          <span class="field-label">Half</span>
+          <div class="half-toggle">
+            <button id="halfTop" onclick="setHalf('T')">Top</button>
+            <button id="halfBot" onclick="setHalf('B')">Bottom</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scores-row">
+      <div class="score-box">
+        <span class="field-label">Home score</span>
+        <input type="number" id="homeScore" value="0" min="0" inputmode="numeric" oninput="recompute()" onchange="recompute()" onkeyup="recompute()">
+      </div>
+      <div class="score-box">
+        <span class="field-label">Away score</span>
+        <input type="number" id="awayScore" value="0" min="0" inputmode="numeric" oninput="recompute()" onchange="recompute()" onkeyup="recompute()">
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+  <div class="tab-panel" id="tabChart">
+
+  <div class="card">
+    <h2>Game chart</h2>
+    <p class="matchup-note" style="margin-top:0">Upload one completed box score to see win probability over the course of that game, using whatever model is currently loaded on the Data tab.</p>
+    <button class="upload-btn" onclick="document.getElementById('chartFileInput').click()">+ Choose a box score (.xml)</button>
+    <input type="file" id="chartFileInput" accept=".xml" onchange="handleChartUpload(event)">
+    <div class="upload-msg" id="chartMsg"></div>
+  </div>
+
+  <div class="card" id="chartCard" style="display:none">
+    <div id="chartHeader"></div>
+    <div id="chartSvgWrap" style="margin-top:14px"></div>
+  </div>
+
+  </div>
+
+  <div class="tab-panel" id="tabData">
+
+  <div class="card">
+    <h2>Model diagnostics</h2>
+    <div class="diag-row">
+      <div class="stat-row" style="flex:1"><span class="k">Pregame odds</span><span class="v" id="pregameReadout">50.0% &ndash; 50.0%</span></div>
+    </div>
+    <div class="stat-row"><span class="k">Team-quality trust</span><span class="v" id="trustReadout">0% &middot; 0 games</span></div>
+    <div class="stat-row"><span class="k">Pregame weight right now</span><span class="v" id="fadeReadout">100%</span></div>
+    <p class="matchup-note" style="margin-top:14px">Runner-fate sample sizes for the bases currently set on the Probability tab &mdash; low n means that base's advancement odds (including double-play risk) are still leaning on a generic default, not your own games.</p>
+    <div id="fateDiag"><div class="stat-row"><span class="k">&mdash;</span><span class="v">bases empty</span></div></div>
+  </div>
+
+  <div class="card">
+    <h2>Dataset</h2>
+    <p class="matchup-note" style="margin-top:0" id="storageNote">Checking storage&hellip;</p>
+    <div class="stat-row"><span class="k">Games loaded</span><span class="v" id="statGames">&mdash;</span></div>
+    <div class="stat-row"><span class="k">Plate appearances</span><span class="v" id="statPAs">&mdash;</span></div>
+    <div class="game-list" id="gameList"></div>
+    <div>
+      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">+ Add box scores (.xml)</button>
+      <button class="upload-btn secondary" onclick="exportData()">Export data</button>
+      <button class="upload-btn secondary" onclick="document.getElementById('importInput').click()">Import data</button>
+    </div>
+    <input type="file" id="fileInput" accept=".xml" multiple onchange="handleUpload(event)">
+    <input type="file" id="importInput" accept=".json" onchange="handleImport(event)">
+    <div class="upload-msg" id="uploadMsg"></div>
+    <span class="reset-link" id="resetLink" onclick="resetAddedGames()">Clear all games</span>
+  </div>
+
+  <div class="card">
+    <h2>Notes</h2>
+    <ul class="note">
+      <li>Extra innings assume no runner placed on 2nd.</li>
+      <li>One baseline game (6/5 Waves @ Saints) has a known 1-run play-by-play/linescore mismatch.</li>
+      <li>Team-quality trust is fit from your own results, not assumed &mdash; it grows only as evidence supports it.</li>
+    </ul>
+  </div>
+
+  </div>
+
+</div>
+
+<script>
+/* ============================== ENGINE ============================== */
+// ============================================================================
+// CCL Win Probability Model — core engine (parsing, transition model, DP)
+// Ported from the validated Python prototype. Designed to run identically
+// in Node (for testing) and in a browser artifact (no external deps).
+// ============================================================================
+
+const BASE_STATES = ['___','1__','_2_','12_','__3','1_3','_23','123'];
+const OUTS_LIST = [0,1,2];
+const EVENTS = ['OUT','K','FC','1B','2B','3B','HR','ROE','BB','HBP','OTHER'];
+const FATE_SHRINK_K = 6;
+const MAX_RUNS = 12;
+const SCORE_DIFF_CLIP = 15;
+const MAX_INNING = 9;
+
+// Fallback runner-advancement rates, used when a specific event+base combo
+// has too few real observations to trust on its own (shrinkage target).
+// Note on 'OUT,1': ~18% double-play-type out rate for a runner on 1st on a
+// ball-in-play out is a rough sabermetric-informed estimate, not derived
+// from this league's own games -- it only matters until real data (see the
+// sample-count diagnostic) outweighs it for a given team/state.
+const DEFAULT_FATE_PRIOR = {
+  '1B,1': {2:0.62, 3:0.30, scored:0.03, out:0.05},
+  '1B,2': {scored:0.60, 3:0.35, out:0.05},
+  '1B,3': {scored:0.92, 3:0.05, out:0.03},
+  '2B,1': {scored:0.45, 3:0.50, out:0.05},
+  '2B,2': {scored:0.95, out:0.05},
+  '2B,3': {scored:0.97, out:0.03},
+  '3B,1': {scored:0.97, out:0.03},
+  '3B,2': {scored:0.98, out:0.02},
+  '3B,3': {scored:0.99, out:0.01},
+  'ROE,1': {2:0.55, 3:0.25, scored:0.10, out:0.10},
+  'ROE,2': {scored:0.55, 3:0.30, out:0.15},
+  'ROE,3': {scored:0.80, 3:0.10, out:0.10},
+  'FC,1': {out:0.70, 2:0.20, 3:0.10},
+  'FC,2': {out:0.20, 2:0.30, 3:0.50},
+  'FC,3': {out:0.10, 3:0.40, scored:0.50},
+  'OUT,1': {1:0.62, 2:0.20, out:0.18},
+  'OUT,2': {2:0.70, 3:0.25, out:0.05},
+  'OUT,3': {3:0.55, scored:0.40, out:0.05},
+  'K,1': {1:0.90, 2:0.08, out:0.02},
+  'K,2': {2:0.90, 3:0.08, out:0.02},
+  'K,3': {3:0.85, scored:0.13, out:0.02},
+  'OTHER,1': {1:0.5, 2:0.4, out:0.1},
+  'OTHER,2': {2:0.5, 3:0.3, scored:0.1, out:0.1},
+  'OTHER,3': {3:0.5, scored:0.4, out:0.1},
+};
+const BATTER_DEST = {
+  OUT: null, K: null,
+  FC: 1, '1B': 1, ROE: 1, BB: 1, HBP: 1,
+  '2B': 2, '3B': 3, HR: 'scored',
+  OTHER: 2,
+};
+
+function basesKeyFromSet(occSet) {
+  return [1,2,3].map(b => occSet.has(b) ? String(b) : '_').join('');
+}
+function occSetFromKey(key) {
+  const s = new Set();
+  for (let i=0;i<3;i++) if (key[i] !== '_') s.add(i+1);
+  return s;
+}
+
+// ---------------------------------------------------------------------------
+// XML box score parsing (mirrors parse_boxscore.py)
+// ---------------------------------------------------------------------------
+
+function basesBeforeFromPlay(playEl) {
+  const occ = new Set();
+  if (playEl.getAttribute('first')) occ.add(1);
+  if (playEl.getAttribute('second')) occ.add(2);
+  if (playEl.getAttribute('third')) occ.add(3);
+  return occ;
+}
+
+function classifyEvent(batterEl) {
+  if (!batterEl) return 'OTHER';
+  const action = (batterEl.getAttribute('action') || '').toUpperCase();
+  if (batterEl.getAttribute('hr') === '1') return 'HR';
+  if (action.startsWith('2B')) return '2B';
+  if (action.startsWith('3B')) return '3B';
+  if (action.startsWith('1B')) return '1B';
+  if (action === 'BB') return 'BB';
+  if (action === 'HP' || batterEl.getAttribute('hbp') === '1') return 'HBP';
+  if (action.startsWith('FC')) return 'FC';
+  if (action.includes('E') && batterEl.getAttribute('out') !== '1') return 'ROE';
+  if (action === 'KS' || action === 'KL') return 'K';
+  if (batterEl.getAttribute('out') === '1') return 'OUT';
+  return 'OTHER';
+}
+
+function applyPlay(curBases, playEl) {
+  const newBases = new Set(curBases);
+  let outsAdded = 0, runs = 0;
+  const participants = []; // {startBase, tobase, out, scored}
+  const batterEl = playEl.querySelector('batter');
+  if (batterEl) {
+    participants.push({startBase: null, tobase: batterEl.getAttribute('tobase'),
+                        out: batterEl.getAttribute('out'), scored: batterEl.getAttribute('scored')});
+  }
+  playEl.querySelectorAll('runner').forEach(r => {
+    participants.push({startBase: parseInt(r.getAttribute('base'),10), tobase: r.getAttribute('tobase'),
+                        out: r.getAttribute('out'), scored: r.getAttribute('scored')});
+  });
+  // pass 1: vacate
+  for (const p of participants) {
+    if (p.startBase !== null && newBases.has(p.startBase)) newBases.delete(p.startBase);
+  }
+  // pass 2: resolve
+  for (const p of participants) {
+    if (p.out === '1') { outsAdded += 1; continue; }
+    if (p.scored === '1') { runs += 1; continue; }
+    if (p.tobase === '4') { runs += 1; continue; }
+    if (p.tobase === '1' || p.tobase === '2' || p.tobase === '3') { newBases.add(parseInt(p.tobase,10)); continue; }
+    // anomalous tobase fallback: +1 base from start
+    const dest = (p.startBase || 0) + 1;
+    if (dest >= 4) runs += 1; else newBases.add(dest);
+  }
+  return {bases: newBases, outsAdded, runs};
+}
+
+function parseBoxscoreXML(xmlText, filename) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'text/xml');
+  const perr = doc.querySelector('parsererror');
+  if (perr) throw new Error('XML parse error in ' + filename);
+
+  const teamVh = {};
+  doc.querySelectorAll('team').forEach(t => { teamVh[t.getAttribute('vh')] = t.getAttribute('name'); });
+  const officialRuns = {};
+  doc.querySelectorAll('team').forEach(t => {
+    const ls = t.querySelector('linescore');
+    if (ls) officialRuns[t.getAttribute('vh')] = parseInt(ls.getAttribute('runs'), 10);
+  });
+  const venueEl = doc.querySelector('venue');
+  const gameDate = venueEl ? venueEl.getAttribute('date') : null; // "M/D/YYYY"
+  const homeTeamName = teamVh['H'] || null;
+  const awayTeamName = teamVh['V'] || null;
+
+  const records = [];
+  let homeScore = 0, awayScore = 0, skippedPaCount = 0;
+  const playsRoot = doc.querySelector('plays');
+  if (!playsRoot) throw new Error('No <plays> section found in ' + filename);
+
+  playsRoot.querySelectorAll('inning').forEach(inningEl => {
+    inningEl.querySelectorAll('batting').forEach(battingEl => {
+      const vh = battingEl.getAttribute('vh');
+      const half = vh === 'V' ? 'T' : 'B';
+      const plays = Array.from(battingEl.querySelectorAll('play'));
+      // group by contiguous batter attribute
+      const groups = [];
+      let curBatter = null, curGroup = [];
+      for (const p of plays) {
+        const b = p.getAttribute('batter');
+        if (b !== curBatter) {
+          if (curGroup.length) groups.push(curGroup);
+          curGroup = [p]; curBatter = b;
+        } else {
+          curGroup.push(p);
+        }
+      }
+      if (curGroup.length) groups.push(curGroup);
+
+      for (const group of groups) {
+        const firstPlay = group[0];
+        const paStartBases = basesBeforeFromPlay(firstPlay);
+        const paStartOuts = parseInt(firstPlay.getAttribute('outs'), 10);
+        const validPaStartOuts = Number.isInteger(paStartOuts) && paStartOuts >= 0 && paStartOuts <= 2;
+        if (!validPaStartOuts) skippedPaCount++;
+
+        const startNames = {1: firstPlay.getAttribute('first'), 2: firstPlay.getAttribute('second'),
+                             3: firstPlay.getAttribute('third')};
+        const fates = {}; // name -> 'out'|'scored'|baseNum
+        Object.values(startNames).forEach(nm => { if (nm) fates[nm] = 'onbase'; });
+
+        let curBases = new Set(paStartBases);
+        let curOuts = paStartOuts;
+        let paRuns = 0;
+        let lastBatterEl = null;
+
+        for (const p of group) {
+          const res = applyPlay(curBases, p);
+          curBases = res.bases; curOuts += res.outsAdded; paRuns += res.runs;
+          const bel = p.querySelector('batter');
+          if (bel) lastBatterEl = bel;
+          p.querySelectorAll('runner').forEach(r => {
+            const nm = r.getAttribute('name');
+            const sb = parseInt(r.getAttribute('base'), 10);
+            if (r.getAttribute('out') === '1') { fates[nm] = 'out'; }
+            else if (r.getAttribute('scored') === '1' || r.getAttribute('tobase') === '4') { fates[nm] = 'scored'; }
+            else {
+              const tb = r.getAttribute('tobase');
+              if (tb === '1' || tb === '2' || tb === '3') fates[nm] = parseInt(tb,10);
+              else {
+                const dest = sb + 1;
+                fates[nm] = dest >= 4 ? 'scored' : dest;
+              }
+            }
+          });
+        }
+
+        const scoreBeforeBatting = vh === 'H' ? homeScore : awayScore;
+        const homeScoreBefore = homeScore, awayScoreBefore = awayScore;
+        if (vh === 'H') homeScore += paRuns; else awayScore += paRuns;
+
+        let batterFate = 'unknown';
+        if (lastBatterEl) {
+          if (lastBatterEl.getAttribute('out') === '1') batterFate = 'out';
+          else if (lastBatterEl.getAttribute('scored') === '1' || lastBatterEl.getAttribute('tobase') === '4') batterFate = 'scored';
+          else if (['1','2','3'].includes(lastBatterEl.getAttribute('tobase'))) batterFate = parseInt(lastBatterEl.getAttribute('tobase'),10);
+        }
+
+        const runnerFates = [];
+        for (const [bNumStr, nm] of Object.entries(startNames)) {
+          if (!nm) continue;
+          const bNum = parseInt(bNumStr,10);
+          let f = fates[nm] !== undefined ? fates[nm] : 'unknown';
+          if (f === 'onbase') f = bNum;
+          runnerFates.push([bNum, f]);
+        }
+
+        if (validPaStartOuts) {
+          records.push({
+            pa_start_bases: basesKeyFromSet(paStartBases),
+            pa_start_outs: paStartOuts,
+            event: classifyEvent(lastBatterEl),
+            runner_fates: runnerFates,
+            pa_inning: parseInt(inningEl.getAttribute('number'), 10),
+            pa_half: half,
+            pa_home_score_before: homeScoreBefore,
+            pa_away_score_before: awayScoreBefore,
+          });
+        }
+        void scoreBeforeBatting; void batterFate; void curOuts;
+      }
+    });
+  });
+
+  const computed = {H: homeScore, V: awayScore};
+  const scoreMismatch = !(officialRuns.H === computed.H && officialRuns.V === computed.V);
+  return {
+    records,
+    diagnostics: {
+      file: filename, n_pa: records.length, official: officialRuns, computed, score_mismatch: scoreMismatch,
+      date: gameDate, home_team: homeTeamName, away_team: awayTeamName,
+      home_runs: officialRuns.H, away_runs: officialRuns.V, skipped_pa: skippedPaCount,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Transition model (mirrors model_build.py)
+// ---------------------------------------------------------------------------
+
+function buildEventProbs(records) {
+  const counts = {0:{},1:{},2:{}};
+  for (const r of records) {
+    const c = counts[r.pa_start_outs];
+    if (!c || !EVENTS.includes(r.event)) continue; // defensively skip anything malformed
+    c[r.event] = (c[r.event]||0) + 1;
+  }
+  const probs = {};
+  for (const o of OUTS_LIST) {
+    const total = EVENTS.reduce((s,e)=>s+(counts[o][e]||0),0);
+    probs[o] = {};
+    for (const e of EVENTS) probs[o][e] = ((counts[o][e]||0) + 0.3) / (total + 0.3*EVENTS.length);
+  }
+  return probs;
+}
+
+function buildFateModel(records) {
+  const raw = {};
+  for (const r of records) {
+    for (const [base, fate] of r.runner_fates) {
+      const key = r.event + ',' + base;
+      raw[key] = raw[key] || {};
+      const fk = String(fate);
+      raw[key][fk] = (raw[key][fk]||0) + 1;
+    }
+  }
+  const blended = {};
+  const counts = {}; // key -> n (how many real observations back this event+base estimate)
+  for (const event of EVENTS) {
+    if (['HR','BB','HBP'].includes(event)) continue;
+    for (const base of [1,2,3]) {
+      const key = event + ',' + base;
+      const countsForKey = raw[key] || {};
+      const n = Object.values(countsForKey).reduce((a,b)=>a+b,0);
+      counts[key] = n;
+      const emp = {};
+      if (n) for (const [k,v] of Object.entries(countsForKey)) emp[k] = v/n;
+      const prior = DEFAULT_FATE_PRIOR[key] || {[base]: 0.7, scored: 0.2, out: 0.1};
+      const w = n / (n + FATE_SHRINK_K);
+      const keys = new Set([...Object.keys(emp), ...Object.keys(prior).map(String)]);
+      const dist = {};
+      let tot = 0;
+      for (const k of keys) {
+        const v = w*(emp[k]||0) + (1-w)*(prior[k]!==undefined?prior[k]:(prior[Number(k)]||0));
+        dist[k] = v; tot += v;
+      }
+      blended[key] = {};
+      for (const k of keys) blended[key][k] = dist[k]/tot;
+    }
+  }
+  return { blended, counts };
+}
+
+function resolveWalkForces(occ) {
+  const dest = {};
+  if (occ.has(1)) {
+    dest[1] = 2;
+    if (occ.has(2)) {
+      dest[2] = 3;
+      if (occ.has(3)) dest[3] = 'scored';
+    } else if (occ.has(3)) {
+      dest[3] = 3;
+    }
+  } else {
+    if (occ.has(2)) dest[2] = 2;
+    if (occ.has(3)) dest[3] = 3;
+  }
+  return dest;
+}
+
+function combineWithCollisions(destList) {
+  const bases = new Set();
+  let runs = 0;
+  for (let dest of destList) {
+    if (dest === 'out') continue;
+    if (dest === 'scored') { runs += 1; continue; }
+    let d = dest;
+    while (bases.has(d)) d += 1;
+    if (d >= 4) runs += 1; else bases.add(d);
+  }
+  return {bases, runs};
+}
+
+function parseFateKey(k) {
+  if (k === 'out' || k === 'scored') return k;
+  return parseInt(k, 10);
+}
+
+function synthesizeStateTransition(basesBeforeStr, outsBefore, eventProbs, fateModel) {
+  const occ = occSetFromKey(basesBeforeStr);
+  const results = {}; // key "bases,outs,runs" -> prob
+
+  const add = (basesSet, outs, runs, p) => {
+    const k = basesKeyFromSet(basesSet) + ',' + outs + ',' + runs;
+    results[k] = (results[k]||0) + p;
+  };
+
+  for (const event of EVENTS) {
+    const pEvent = eventProbs[outsBefore][event];
+    if (!pEvent) continue;
+
+    if (event === 'HR') {
+      add(new Set(), outsBefore, occ.size + 1, pEvent);
+      continue;
+    }
+    if (event === 'BB' || event === 'HBP') {
+      const forced = resolveWalkForces(occ);
+      const basesAfter = new Set();
+      let runs = 0;
+      for (const b of occ) {
+        const d = forced[b] !== undefined ? forced[b] : b;
+        if (d === 'scored') runs += 1; else basesAfter.add(d);
+      }
+      basesAfter.add(1);
+      add(basesAfter, Math.min(outsBefore,3), runs, pEvent);
+      continue;
+    }
+    if (event === 'FC' && occ.size === 0) {
+      add(occ, Math.min(outsBefore+1,3), 0, pEvent);
+      continue;
+    }
+
+    const leadToTrail = Array.from(occ).sort((a,b)=>b-a);
+    const perRunnerDists = leadToTrail.map(b => {
+      const fd = fateModel[event + ',' + b] || {[b]:0.7, scored:0.2, out:0.1};
+      return Object.entries(fd).map(([k,v]) => [parseFateKey(k), v]);
+    });
+    const batterDest = BATTER_DEST[event] !== undefined ? BATTER_DEST[event] : null;
+
+    // enumerate joint combinations (cartesian product)
+    let combos = [[[], 1.0]];
+    for (const dist of perRunnerDists) {
+      const next = [];
+      for (const [arr, p] of combos) {
+        for (const [fate, fp] of dist) {
+          next.push([[...arr, fate], p*fp]);
+        }
+      }
+      combos = next;
+    }
+
+    for (const [fates, pCombo] of combos) {
+      let extraOut = fates.filter(f => f === 'out').length;
+      const {bases: basesAfter, runs: rRunners} = combineWithCollisions(fates);
+      let runs = rRunners;
+      if (batterDest === 'scored') {
+        runs += 1;
+      } else if (batterDest !== null) {
+        let d = batterDest;
+        while (basesAfter.has(d)) d += 1;
+        if (d >= 4) runs += 1; else basesAfter.add(d);
+      } else {
+        extraOut += 1;
+      }
+      const no = Math.min(outsBefore + extraOut, 3);
+      add(basesAfter, no, runs, pEvent*pCombo);
+    }
+  }
+
+  const total = Object.values(results).reduce((a,b)=>a+b,0);
+  const out = [];
+  for (const [k,v] of Object.entries(results)) {
+    const [bases, outs, runs] = k.split(',');
+    out.push([[bases, parseInt(outs,10), parseInt(runs,10)], v/total]);
+  }
+  return out;
+}
+
+function buildFullTransitionMatrix(records) {
+  const eventProbs = buildEventProbs(records);
+  const { blended: fateModel, counts: fateCounts } = buildFateModel(records);
+  const matrix = {};
+  for (const bases of BASE_STATES) {
+    for (const outs of OUTS_LIST) {
+      matrix[bases+','+outs] = synthesizeStateTransition(bases, outs, eventProbs, fateModel);
+    }
+  }
+  return {matrix, eventProbs, fateModel, fateCounts};
+}
+
+// ---------------------------------------------------------------------------
+// Runs distribution solver + Win Probability DP (mirrors wp_engine.py)
+// ---------------------------------------------------------------------------
+
+function solveRunsDistributions(matrix, iters=60) {
+  const delta0 = () => { const v = new Array(MAX_RUNS+1).fill(0); v[0]=1; return v; };
+  let dists = {};
+  for (const bases of BASE_STATES) for (const outs of OUTS_LIST) dists[bases+','+outs] = delta0();
+
+  for (let it=0; it<iters; it++) {
+    const next = {};
+    for (const bases of BASE_STATES) {
+      for (const outs of OUTS_LIST) {
+        const key = bases+','+outs;
+        const acc = new Array(MAX_RUNS+1).fill(0);
+        for (const [[nb,no,r], p] of matrix[key]) {
+          if (no >= 3) {
+            acc[Math.min(r,MAX_RUNS)] += p;
+          } else {
+            const dist = dists[nb+','+no];
+            for (let i=0;i<dist.length;i++) {
+              if (dist[i] === 0) continue;
+              const j = Math.min(i+r, MAX_RUNS);
+              acc[j] += p*dist[i];
+            }
+          }
+        }
+        next[key] = acc;
+      }
+    }
+    dists = next;
+  }
+  return dists;
+}
+
+function distMean(dist) {
+  return dist.reduce((s,p,i)=>s+i*p, 0);
+}
+
+class WinProbEngine {
+  constructor(runsDists) {
+    this.runsDists = runsDists;
+    this._cache = {};
+    this._xTiedExtra = null;
+  }
+  leadoffDist() { return this.runsDists['___,0']; }
+
+  tiedExtraInningWp() {
+    if (this._xTiedExtra !== null) return this._xTiedExtra;
+    const lead = this.leadoffDist();
+    let pHome=0, pAway=0;
+    for (let a=0; a<lead.length; a++) {
+      if (!lead[a]) continue;
+      const bot = this.leadoffDist();
+      for (let h=0; h<bot.length; h++) {
+        if (!bot[h]) continue;
+        const joint = lead[a]*bot[h];
+        if (h>a) pHome += joint; else if (h<a) pAway += joint;
+      }
+    }
+    const denom = pHome+pAway;
+    this._xTiedExtra = denom>0 ? pHome/denom : 0.5;
+    return this._xTiedExtra;
+  }
+
+  g(inning, half, outs, bases, diff) {
+    const diffC = Math.max(-SCORE_DIFF_CLIP, Math.min(SCORE_DIFF_CLIP, diff));
+    const key = [Math.min(inning, MAX_INNING+1), half, outs, bases, diffC].join('|');
+    if (key in this._cache) return this._cache[key];
+
+    if (half==='B' && inning>=MAX_INNING && diff>0) { this._cache[key]=1.0; return 1.0; }
+
+    const dist = this.runsDists[bases+','+outs];
+    let total = 0;
+    for (let r=0; r<dist.length; r++) {
+      const p = dist[r];
+      if (!p) continue;
+      if (half==='T') {
+        const newDiff = diff - r;
+        if (inning>=MAX_INNING && newDiff>0) {
+          total += p*1.0;
+        } else {
+          total += p*this.g(inning,'B',0,'___',newDiff);
+        }
+      } else {
+        const newDiff = diff + r;
+        if (inning>=MAX_INNING) {
+          if (newDiff>0) total += p*1.0;
+          else if (newDiff<0) total += p*0.0;
+          else total += p*this.tiedExtraInningWp();
+        } else {
+          total += p*this.g(inning+1,'T',0,'___',newDiff);
+        }
+      }
+    }
+    this._cache[key] = total;
+    return total;
+  }
+
+  winProb(inning, half, outs, bases, homeScore, awayScore) {
+    return this.g(inning, half, outs, bases, homeScore-awayScore);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Team-quality layer: margin-of-victory-weighted Elo + log-odds blend
+// ---------------------------------------------------------------------------
+const ELO_BASE = 1500;
+const ELO_K = 24;
+const ELO_HFA = 25; // home-field advantage, in Elo points (~54% historical home win rate)
+
+function parseUsDate(s) {
+  // "M/D/YYYY" -> sortable Date. Returns null if unparseable.
+  if (!s) return null;
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  return new Date(parseInt(m[3],10), parseInt(m[1],10)-1, parseInt(m[2],10));
+}
+
+function eloExpectedHome(rHome, rAway) {
+  return 1 / (1 + Math.pow(10, -((rHome + ELO_HFA) - rAway) / 400));
+}
+
+// Dampened margin-of-victory multiplier (538-style): bigger blowouts move the
+// rating more, but the effect shrinks the further apart the teams already are
+// (so a huge win over a team you're already expected to beat doesn't overreact).
+function movMultiplier(marginRuns, ratingDiffAbs) {
+  return Math.log(Math.max(marginRuns, 1) + 1) * (2.2 / (ratingDiffAbs * 0.001 + 2.2));
+}
+
+// Computes current Elo ratings from every game we have a final score for,
+// processed in chronological order. Games missing team names or a parseable
+// date are skipped (can't be placed in the sequence).
+function computeEloRatings(gameList) {
+  const usable = gameList
+    .filter(g => g.home_team && g.away_team && Number.isFinite(g.home_runs) && Number.isFinite(g.away_runs))
+    .map(g => ({...g, _d: parseUsDate(g.date)}))
+    .filter(g => g._d)
+    .sort((a,b) => a._d - b._d);
+
+  const ratings = {};
+  const gamesPlayed = {};
+  const calibration = []; // {x: pregame rating-gap (scaled), y: actual outcome} per game, in play order
+  for (const g of usable) {
+    const rHome = ratings[g.home_team] ?? ELO_BASE;
+    const rAway = ratings[g.away_team] ?? ELO_BASE;
+    const expHome = eloExpectedHome(rHome, rAway);
+    let actualHome = 0.5;
+    if (g.home_runs > g.away_runs) actualHome = 1;
+    else if (g.home_runs < g.away_runs) actualHome = 0;
+    calibration.push({ x: (rHome - rAway + ELO_HFA) / 400, y: actualHome });
+    const margin = Math.abs(g.home_runs - g.away_runs);
+    const mult = movMultiplier(margin, Math.abs(rHome - rAway));
+    const delta = ELO_K * mult * (actualHome - expHome);
+    ratings[g.home_team] = rHome + delta;
+    ratings[g.away_team] = rAway - delta;
+    gamesPlayed[g.home_team] = (gamesPlayed[g.home_team] || 0) + 1;
+    gamesPlayed[g.away_team] = (gamesPlayed[g.away_team] || 0) + 1;
+  }
+  const trust = fitTrustFactor(calibration, TRUST_RIDGE_LAMBDA);
+  return { ratings, gamesPlayed, nGamesUsed: usable.length, trust, nCalibrationGames: calibration.length };
+}
+
+// How strongly the trust factor is pulled toward 0 (ignore the rating gap
+// entirely) absent evidence. This is a ridge penalty baked directly into the
+// fit, not a post-hoc shrink -- it keeps the estimate numerically stable even
+// with a handful of games that happen to all go the same way, unlike a raw
+// unregularized logistic fit (which can blow up to +/-infinity on tiny,
+// perfectly-separated samples).
+const TRUST_RIDGE_LAMBDA = 4;
+
+// 1D ridge-penalized logistic regression: fits b in P(home win) = sigmoid(b*x),
+// where x is the pregame rating gap (already folded in with home-field, scaled
+// like a traditional Elo expectation) and y is what actually happened. b=1
+// would mean "trust the classic Elo formula completely"; b=0 means "ignore
+// the rating gap and go 50/50 regardless of ratings." Newton-Raphson on a
+// single parameter with an L2 penalty is a strictly convex, well-conditioned
+// problem, so this always converges cleanly regardless of sample size.
+function fitTrustFactor(pairs, lambda) {
+  let b = 0;
+  for (let it = 0; it < 25; it++) {
+    let grad = 2 * lambda * b, hess = 2 * lambda;
+    for (const { x, y } of pairs) {
+      const p = sigmoid(b * x);
+      grad += (p - y) * x;
+      hess += p * (1 - p) * x * x;
+    }
+    if (hess <= 0) break;
+    b -= grad / hess;
+  }
+  // Safety rail: never claim MORE confidence in the rating gap than the
+  // traditional Elo formula itself would. The ridge penalty already pulls b
+  // toward 0 with little data, but with a still-smallish, partly self-
+  // referential sample (the same games build the ratings and grade them),
+  // the fit can occasionally overshoot past 1 -- cap it rather than let the
+  // model claim to know more than the formula it's calibrating against.
+  // Both values are kept: `capped` is what's actually used, `raw` shows how
+  // hard the fit is pushing against that ceiling.
+  return { raw: b, capped: Math.min(b, 1) };
+}
+
+function clampProb(p) { return Math.min(0.999, Math.max(0.001, p)); }
+function logit(p) { const c = clampProb(p); return Math.log(c / (1 - c)); }
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+
+// Fraction of a standard 9-inning game's 54 outs still remaining. Clamped to
+// 0 once regulation is used up (extra innings run purely on game state).
+function pregameFadeWeight(inning, half, outs, scoreDiff) {
+  const elapsed = (inning - 1) * 6 + (half === 'B' ? 3 : 0) + outs;
+  const outsWeight = Math.max(0, Math.min(1, (54 - elapsed) / 54));
+  // A real score differential is information too, independent of how many
+  // outs have been recorded -- a leadoff home run or a 5-run 1st inning has
+  // already told you something, even at 0 outs. Each run of margin shrinks
+  // how much the pregame (team-quality-only) belief still gets to matter,
+  // so a decisive early lead isn't drowned out by "it's still early."
+  const scoreShrink = 1 / (1 + Math.abs(scoreDiff));
+  return outsWeight * scoreShrink;
+}
+
+// Blends a pregame (team-quality) probability with the in-game (state-based)
+// probability in log-odds space, weighted by how much of the game is left.
+function blendWinProb(pregameHomeWP, gameStateHomeWP, weight) {
+  const lo = weight * logit(pregameHomeWP) + (1 - weight) * logit(gameStateHomeWP);
+  return sigmoid(lo);
+}
+
+
+
+/* ============================== BASELINE DATA ============================== */
+const BASELINE = {"records": [], "diagnostics": []}; // starts empty -- add games via the upload panel
+
+/* ============================== UI STATE ============================== */
+let state = { inning: 1, half: 'T', outs: 0, bases: new Set(), homeScore: 0, awayScore: 0, homeTeam: '', awayTeam: '' };
+let engine = null;
+let allRecords = [];
+let allGamesMeta = []; // {file, n_pa, score_mismatch, source, date, home_team, away_team, home_runs, away_runs}
+let eloInfo = { ratings: {}, gamesPlayed: {}, nGamesUsed: 0, trust: { raw: 0, capped: 0 }, nCalibrationGames: 0 };
+
+function showTab(name) {
+  document.getElementById('tabProbability').classList.toggle('active', name === 'probability');
+  document.getElementById('tabChart').classList.toggle('active', name === 'chart');
+  document.getElementById('tabData').classList.toggle('active', name === 'data');
+  document.getElementById('tabBtnProb').classList.toggle('active', name === 'probability');
+  document.getElementById('tabBtnChart').classList.toggle('active', name === 'chart');
+  document.getElementById('tabBtnData').classList.toggle('active', name === 'data');
+}
+
+function ordinal(n) {
+  const s = ['th','st','nd','rd'], v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+// Identifies a game by what actually happened (date + matchup), not by
+// filename, so a re-exported or renamed copy of the same game is still
+// recognized as a duplicate. Falls back to null (no content check possible)
+// if any of the three fields are missing/unparseable.
+function gameContentKey(d) {
+  if (!d || !d.date || !d.home_team || !d.away_team) return null;
+  return [d.date.trim(), d.home_team.trim().toLowerCase(), d.away_team.trim().toLowerCase()].join('|');
+}
+
+let fateCounts = {};
+let fateModelGlobal = {};
+
+function rebuildModel() {
+  const { matrix, fateCounts: fc, fateModel: fm } = buildFullTransitionMatrix(allRecords);
+  const dists = solveRunsDistributions(matrix);
+  engine = new WinProbEngine(dists);
+  eloInfo = computeEloRatings(allGamesMeta);
+  fateCounts = fc;
+  fateModelGlobal = fm;
+}
+
+function basesKey() {
+  return [1,2,3].map(b => state.bases.has(b) ? String(b) : '_').join('');
+}
+
+function recompute() {
+  state.homeScore = parseInt(document.getElementById('homeScore').value || '0', 10);
+  state.awayScore = parseInt(document.getElementById('awayScore').value || '0', 10);
+
+  document.querySelectorAll('.diamond-base').forEach(el => {
+    const b = parseInt(el.id.replace('base',''), 10);
+    el.setAttribute('fill', state.bases.has(b) ? '#C99A3E' : '#FAF7EF');
+  });
+  document.querySelectorAll('.out-dot').forEach(el => {
+    const o = parseInt(el.dataset.out, 10);
+    el.classList.toggle('filled', o < state.outs);
+  });
+  document.getElementById('inningVal').textContent = ordinal(state.inning);
+  document.getElementById('halfTop').classList.toggle('active', state.half === 'T');
+  document.getElementById('halfBot').classList.toggle('active', state.half === 'B');
+
+  const decided = state.half === 'B' && state.inning >= 9 && (state.homeScore - state.awayScore) > 0;
+  const readout = document.getElementById('readout');
+  const hasPaData = allRecords.length > 0;
+
+  const rHome = state.homeTeam ? (eloInfo.ratings[state.homeTeam] ?? ELO_BASE) : ELO_BASE;
+  const rAway = state.awayTeam ? (eloInfo.ratings[state.awayTeam] ?? ELO_BASE) : ELO_BASE;
+  const bothUnrated = !state.homeTeam && !state.awayTeam;
+  // Rating gap converted to a probability via the trust factor fit from your
+  // own game history (see computeEloRatings/fitTrustFactor), not an assumed
+  // chess-style formula -- with little history this stays close to flat.
+  const pregameHomeWP = bothUnrated ? 0.5 : sigmoid(eloInfo.trust.capped * (rHome - rAway + ELO_HFA) / 400);
+  const weight = pregameFadeWeight(state.inning, state.half, state.outs, state.homeScore - state.awayScore);
+
+  let homeP = null;
+  if (!hasPaData) {
+    // No box scores loaded yet -- nothing for the situational model to run on.
+  } else if (decided) {
+    homeP = 1.0;
+  } else {
+    const gameStateWP = engine.winProb(state.inning, state.half, state.outs, basesKey(), state.homeScore, state.awayScore);
+    homeP = bothUnrated ? gameStateWP : blendWinProb(pregameHomeWP, gameStateWP, weight);
+  }
+  document.getElementById('homeWp').textContent = homeP === null ? '\u2014' : (homeP*100).toFixed(1) + '%';
+  document.getElementById('awayWp').textContent = homeP === null ? '\u2014' : ((1-homeP)*100).toFixed(1) + '%';
+  document.getElementById('wpBar').style.width = (homeP === null ? 50 : homeP*100).toFixed(2) + '%';
+
+  document.getElementById('pregameReadout').textContent =
+    (pregameHomeWP*100).toFixed(1) + '% \u2013 ' + ((1-pregameHomeWP)*100).toFixed(1) + '%';
+  const trustCapped = eloInfo.trust.capped, trustRaw = eloInfo.trust.raw;
+  const trustHitCeiling = trustRaw > 1.005; // small epsilon for float noise
+  document.getElementById('trustReadout').textContent =
+    (trustCapped*100).toFixed(0) + '%' +
+    (trustHitCeiling ? ' (raw fit wants ' + (trustRaw*100).toFixed(0) + '%, capped)' : '') +
+    ' \u00b7 ' + eloInfo.nCalibrationGames + ' game' + (eloInfo.nCalibrationGames===1?'':'s');
+  document.getElementById('fadeReadout').textContent = (weight*100).toFixed(0) + '%';
+  renderFateDiag();
+
+  const basesDesc = state.bases.size === 0 ? 'BASES EMPTY' :
+    'RUNNER' + (state.bases.size>1?'S':'') + ' ON ' + Array.from(state.bases).sort().map(b=>ordinal(b)).join(' & ').toUpperCase();
+  const halfDesc = state.half === 'T' ? 'TOP' : 'BOTTOM';
+  document.getElementById('wpCaption').textContent =
+    (!hasPaData ? 'NO BOX SCORES LOADED &middot; ' : '') +
+    (decided ? 'FINAL &middot; ' : '') +
+    halfDesc + ' ' + ordinal(state.inning).toUpperCase() + ' &middot; ' +
+    state.outs + ' OUT &middot; ' + basesDesc + ' &middot; ' + state.homeScore + '&ndash;' + state.awayScore;
+  document.getElementById('wpCaption').innerHTML = document.getElementById('wpCaption').textContent
+    .replace('&middot;','&middot;').replace(/&ndash;/,'–').replace(/&middot;/g,'·');
+}
+
+function renderFateDiag() {
+  const el = document.getElementById('fateDiag');
+  if (state.bases.size === 0) {
+    el.innerHTML = '<div class="stat-row"><span class="k">&mdash;</span><span class="v">bases empty</span></div>';
+    return;
+  }
+  const rows = Array.from(state.bases).sort().map(b => {
+    const key = 'OUT,' + b;
+    const n = fateCounts[key] || 0;
+    const outRate = fateModelGlobal[key] ? (fateModelGlobal[key].out || 0) : 0;
+    return '<div class="stat-row"><span class="k">Runner on ' + ordinal(b) + ' &mdash; doubled up on a ball-in-play out</span>' +
+           '<span class="v">' + (outRate*100).toFixed(0) + '% (n=' + n + ')</span></div>';
+  });
+  el.innerHTML = rows.join('');
+}
+
+function toggleBase(n) {
+  if (state.bases.has(n)) state.bases.delete(n); else state.bases.add(n);
+  recompute();
+}
+function setOuts(n) { state.outs = n; recompute(); }
+function stepInning(d) { state.inning = Math.max(1, state.inning + d); recompute(); }
+function setHalf(h) { state.half = h; recompute(); }
+
+document.getElementById('base1').addEventListener('click', () => toggleBase(1));
+document.getElementById('base2').addEventListener('click', () => toggleBase(2));
+document.getElementById('base3').addEventListener('click', () => toggleBase(3));
+['input','change','keyup'].forEach(evt => {
+  document.getElementById('homeScore').addEventListener(evt, recompute);
+  document.getElementById('awayScore').addEventListener(evt, recompute);
+});
+
+/* ============================== DATASET PANEL ============================== */
+function renderDataset() {
+  document.getElementById('statGames').textContent = allGamesMeta.length;
+  document.getElementById('statPAs').textContent = allRecords.length;
+  const list = document.getElementById('gameList');
+  list.innerHTML = '';
+  allGamesMeta.forEach(g => {
+    const row = document.createElement('div');
+    row.className = 'game-item';
+    const badge = g.score_mismatch
+      ? '<span class="badge warn" title="Play-by-play total doesn\'t match the official linescore">mismatch</span>'
+      : '<span class="badge ok">ok</span>';
+    row.innerHTML = '<span class="game-name" title="'+g.file+'">'+g.file+'</span>' +
+                     '<span style="display:flex;gap:6px;align-items:center;flex-shrink:0">' +
+                     '<span class="badge ok" style="background:transparent;color:#5B5648">'+g.n_pa+' PA</span>' + badge + '</span>';
+    list.appendChild(row);
+  });
+}
+
+function renderTeamSelectors() {
+  const teams = Object.keys(eloInfo.ratings).sort();
+  const prevHome = state.homeTeam, prevAway = state.awayTeam;
+
+  function buildOptions(select, keepValue) {
+    select.innerHTML = '';
+    const optNone = document.createElement('option');
+    optNone.value = ''; optNone.textContent = 'Unrated / average';
+    select.appendChild(optNone);
+    teams.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      const gp = eloInfo.gamesPlayed[t] || 0;
+      opt.textContent = t + '  (' + Math.round(eloInfo.ratings[t]) + (gp < 3 ? ', ' + gp + ' gm' : '') + ')';
+      select.appendChild(opt);
+    });
+    select.value = teams.includes(keepValue) ? keepValue : '';
+  }
+
+  buildOptions(document.getElementById('homeTeamSel'), prevHome);
+  buildOptions(document.getElementById('awayTeamSel'), prevAway);
+  state.homeTeam = document.getElementById('homeTeamSel').value;
+  state.awayTeam = document.getElementById('awayTeamSel').value;
+}
+
+function onTeamChange() {
+  state.homeTeam = document.getElementById('homeTeamSel').value;
+  state.awayTeam = document.getElementById('awayTeamSel').value;
+  recompute();
+}
+
+const STORAGE_KEY = 'ccl_wp_added_games';
+// 'shared' = Claude artifact storage (works when viewed inside Claude's chat,
+//   and is visible to everyone who opens that view). 'local' = this browser's
+//   own localStorage (works when the file is downloaded and opened directly,
+//   but only persists on this machine/browser). 'none' = nothing available;
+//   Export/Import is the only way to keep data across a reload in that case.
+let storageBackend = null;
+
+function waitForClaudeStorage(maxMs = 800, interval = 25) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    (function poll() {
+      if (window.storage) return resolve(true);
+      if (Date.now() - start > maxMs) return resolve(false);
+      setTimeout(poll, interval);
+    })();
+  });
+}
+function localStorageAvailable() {
+  try {
+    const k = '__ccl_wp_probe__';
+    window.localStorage.setItem(k, '1');
+    window.localStorage.removeItem(k);
+    return true;
+  } catch (e) { return false; }
+}
+// Detected once at startup and cached, so every later save/load doesn't
+// re-pay the ~800ms Claude-storage poll on every single upload.
+async function detectStorageBackend() {
+  if (await waitForClaudeStorage()) return 'shared';
+  if (localStorageAvailable()) return 'local';
+  return 'none';
+}
+
+async function loadAddedGames() {
+  storageBackend = await detectStorageBackend();
+  if (storageBackend === 'shared') {
+    try {
+      const res = await window.storage.get(STORAGE_KEY, true);
+      if (res && res.value) return JSON.parse(res.value);
+    } catch (e) { /* key doesn't exist yet */ }
+    return [];
+  }
+  if (storageBackend === 'local') {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  return [];
+}
+// Returns true on a confirmed save, false if nothing could persist --
+// callers should tell the user when this comes back false.
+async function saveAddedGames(games) {
+  if (storageBackend === 'shared') {
+    try { await window.storage.set(STORAGE_KEY, JSON.stringify(games), true); return true; }
+    catch (e) { return false; }
+  }
+  if (storageBackend === 'local') {
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(games)); return true; }
+    catch (e) { return false; }
+  }
+  return false;
+}
+async function clearAddedGames() {
+  if (storageBackend === 'shared') {
+    try { await window.storage.delete(STORAGE_KEY, true); return true; } catch (e) { return false; }
+  }
+  if (storageBackend === 'local') {
+    try { window.localStorage.removeItem(STORAGE_KEY); return true; } catch (e) { return false; }
+  }
+  return true; // nothing to clear
+}
+
+function updateStorageNote() {
+  const el = document.getElementById('storageNote');
+  const resetLink = document.getElementById('resetLink');
+  if (storageBackend === 'shared') {
+    el.textContent = 'Games you add here are shared \u2014 anyone with this link sees the same dataset and ratings, and can add more games too.';
+    resetLink.textContent = 'Clear all games for everyone';
+  } else if (storageBackend === 'local') {
+    el.textContent = 'Running standalone: games you add are saved to this browser only, not shared with anyone else. Use Export/Import to move your dataset or share it with someone.';
+    resetLink.textContent = 'Clear all games (this browser)';
+  } else {
+    el.textContent = '\u26a0\ufe0f This browser can\u2019t save data right now (storage is blocked) \u2014 games will disappear on reload. Export right after adding games to keep a copy.';
+    resetLink.textContent = 'Clear all games (this session)';
+  }
+}
+
+// addedGames is the in-memory source of truth for this session. Uploads push
+// into it directly and the screen re-renders from it immediately; storage is
+// synced afterward as a best-effort background step, never a prerequisite
+// for what's on screen.
+let addedGames = [];
+
+function applyAllGames() {
+  allRecords = BASELINE.records.slice();
+  allGamesMeta = BASELINE.diagnostics.map(d => ({
+    file: d.file, n_pa: d.n_pa, score_mismatch: d.score_mismatch, source: 'baseline',
+    date: d.date, home_team: d.home_team, away_team: d.away_team, home_runs: d.home_runs, away_runs: d.away_runs,
+  }));
+  for (const g of addedGames) {
+    allRecords = allRecords.concat(g.records);
+    allGamesMeta.push({
+      file: g.file, n_pa: g.diagnostics.n_pa, score_mismatch: g.diagnostics.score_mismatch, source: 'added',
+      date: g.diagnostics.date, home_team: g.diagnostics.home_team, away_team: g.diagnostics.away_team,
+      home_runs: g.diagnostics.home_runs, away_runs: g.diagnostics.away_runs,
+    });
+  }
+  rebuildModel();
+  renderDataset();
+  renderTeamSelectors();
+  recompute();
+}
+
+async function handleUpload(evt) {
+  const files = Array.from(evt.target.files || []);
+  if (!files.length) return;
+  const msgEl = document.getElementById('uploadMsg');
+  msgEl.textContent = 'Parsing ' + files.length + ' file(s)...';
+
+  try {
+    const existingNames = new Set([...allGamesMeta.map(g=>g.file)]);
+    const existingContentKeys = new Set(allGamesMeta.map(g => gameContentKey(g)).filter(Boolean));
+    let messages = [];
+    let addedAny = false;
+
+    for (const file of files) {
+      if (existingNames.has(file.name)) {
+        messages.push(file.name + ': already loaded, skipped.');
+        continue;
+      }
+      try {
+        const text = await file.text();
+        const { records, diagnostics } = parseBoxscoreXML(text, file.name);
+        const ck = gameContentKey(diagnostics);
+        if (ck && existingContentKeys.has(ck)) {
+          messages.push(file.name + ': duplicate of an already-loaded game (same matchup & date), skipped.');
+          continue;
+        }
+        addedGames.push({ file: file.name, records, diagnostics, addedAt: Date.now() });
+        existingNames.add(file.name);
+        if (ck) existingContentKeys.add(ck);
+        addedAny = true;
+        messages.push(file.name + ': parsed ' + records.length + ' plate appearances' +
+          (diagnostics.score_mismatch ? ' (note: score mismatch vs. official linescore)' : '') +
+          (diagnostics.skipped_pa ? ' (' + diagnostics.skipped_pa + ' plate appearance(s) had an unreadable outs count and were skipped)' : '') + '.');
+      } catch (e) {
+        messages.push(file.name + ': could not parse (' + (e && e.message ? e.message : e) + ').');
+      }
+    }
+
+    if (addedAny) {
+      applyAllGames(); // update the screen from memory now -- does not wait on storage
+      const saved = await saveAddedGames(addedGames);
+      updateStorageNote();
+      if (!saved) {
+        messages.push('\u26a0\ufe0f Could not save for next time (' + storageBackend + ' storage unavailable). ' +
+          'These games are live for you right now but will be gone on reload \u2014 use Export to keep a copy.');
+      }
+    }
+    msgEl.textContent = messages.join('\n');
+  } catch (e) {
+    msgEl.textContent = '\u26a0\ufe0f Something went wrong while adding these files: ' + (e && e.message ? e.message : e) +
+      '. Open the browser console (Safari: Develop \u2192 Show JavaScript Console) for the full error.';
+  } finally {
+    evt.target.value = '';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Single-game WP chart
+// ---------------------------------------------------------------------------
+
+const EVENT_LABELS = {
+  '1B': 'Single', '2B': 'Double', '3B': 'Triple', 'HR': 'Home run',
+  'BB': 'Walk', 'HBP': 'Hit by pitch', 'K': 'Strikeout', 'OUT': 'Out',
+  'FC': "Fielder's choice", 'ROE': 'Reached on error', 'OTHER': 'Other',
+};
+function basesDescFromKey(key) {
+  if (!key || key === '___') return 'bases empty';
+  const on = [1,2,3].filter(b => key[b-1] !== '_');
+  if (on.length === 0) return 'bases empty';
+  return 'runner' + (on.length>1?'s':'') + ' on ' + on.map(ordinal).join(' & ');
+}
+
+// Each point represents the game state immediately AFTER a given plate
+// appearance (point 0 is the true pregame state, before anything happens).
+// This lines up point[i]'s "play" with what just occurred to produce it,
+// which is what a hover tooltip needs to show.
+function computeWpTrajectory(records, finalHomeRuns, finalAwayRuns) {
+  const points = [];
+  const startInning = records[0] ? records[0].pa_inning : 1;
+  const startHalf = records[0] ? records[0].pa_half : 'T';
+  points.push({
+    wp: engine.winProb(startInning, startHalf, 0, '___', 0, 0),
+    inning: startInning, half: startHalf, outs: 0, bases: '___',
+    homeScore: 0, awayScore: 0, play: null,
+  });
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    const isLast = i === records.length - 1;
+    let inning, half, outs, bases, homeScore, awayScore, wp, final = false;
+    if (!isLast) {
+      const nr = records[i+1];
+      inning = nr.pa_inning; half = nr.pa_half; outs = nr.pa_start_outs; bases = nr.pa_start_bases;
+      homeScore = nr.pa_home_score_before; awayScore = nr.pa_away_score_before;
+      wp = engine.winProb(inning, half, outs, bases, homeScore, awayScore);
+    } else {
+      inning = r.pa_inning; half = r.pa_half; outs = null; bases = null;
+      homeScore = finalHomeRuns; awayScore = finalAwayRuns;
+      wp = finalHomeRuns > finalAwayRuns ? 1 : 0;
+      final = true;
+    }
+    points.push({ wp, inning, half, outs, bases, homeScore, awayScore, play: r.event, final });
+  }
+  return points;
+}
+
+let chartPoints = [];
+let chartMeta = {};
+const CHART_W = 640, CHART_H = 330, CHART_ML = 34, CHART_MR = 10, CHART_MT = 22, CHART_MB = 42;
+
+function renderWpChart(points, meta) {
+  document.getElementById('chartCard').style.display = '';
+  chartPoints = points;
+  chartMeta = meta;
+  const homeLabel = meta.home_team || 'Home', awayLabel = meta.away_team || 'Away';
+  const finalWp = points[points.length - 1].wp;
+  const leaderLabel = finalWp >= 0.5 ? homeLabel : awayLabel;
+  const leaderPct = (finalWp >= 0.5 ? finalWp : 1 - finalWp) * 100;
+
+  document.getElementById('chartHeader').innerHTML =
+    '<div class="chart-header"><span class="chart-team">' + awayLabel + '</span>' +
+    '<span class="chart-score">' + meta.away_runs + '</span></div>' +
+    '<div class="chart-final">Final &middot; ' + (meta.date || '') + '</div>' +
+    '<div class="chart-header"><span class="chart-team">' + homeLabel + '</span>' +
+    '<span class="chart-score">' + meta.home_runs + '</span></div>' +
+    '<p class="chart-callout">Win probability &middot; <span class="v">' + leaderLabel + ' ' + leaderPct.toFixed(1) + '%</span></p>';
+
+  const W = CHART_W, H = CHART_H, marginL = CHART_ML, marginR = CHART_MR, marginT = CHART_MT, marginB = CHART_MB;
+  const plotW = W - marginL - marginR, plotH = H - marginT - marginB;
+  const n = points.length;
+  const x = i => marginL + (n === 1 ? 0 : (i / (n - 1)) * plotW);
+  const y = wp => marginT + (1 - wp) * plotH;
+  const y50 = y(0.5);
+  points.forEach((p, i) => { p._x = x(i); p._y = y(p.wp); });
+
+  const linePts = points.map((p, i) => x(i) + ',' + y(p.wp).toFixed(1)).join(' ');
+  const areaPts = x(0) + ',' + y50.toFixed(1) + ' ' + linePts + ' ' + x(n-1) + ',' + y50.toFixed(1);
+
+  const gridlines = [];
+  let lastLabel = null;
+  points.forEach((p, i) => {
+    const label = p.final ? null : ordinal(p.inning) + (p.half === 'B' ? 'B' : '');
+    if (label && label !== lastLabel && p.half === 'T') {
+      gridlines.push({ x: x(i), label: ordinal(p.inning) });
+      lastLabel = label;
+    } else if (label) {
+      lastLabel = label;
+    }
+  });
+
+  const svg = `
+    <svg id="wpChartSvg" viewBox="0 0 ${W} ${H}" width="100%" style="display:block;cursor:crosshair"
+         onmousemove="handleChartHover(event)" onmouseleave="hideChartTooltip()"
+         ontouchstart="handleChartHover(event)" ontouchmove="handleChartHover(event)" ontouchend="hideChartTooltip()">
+      <defs>
+        <clipPath id="clipAbove"><rect x="0" y="0" width="${W}" height="${y50}"/></clipPath>
+        <clipPath id="clipBelow"><rect x="0" y="${y50}" width="${W}" height="${H-y50}"/></clipPath>
+      </defs>
+      ${gridlines.map(g => `<line x1="${g.x}" y1="${marginT}" x2="${g.x}" y2="${H-marginB}" stroke="#14332A" stroke-opacity="0.12"/>`).join('')}
+      <line x1="${marginL}" y1="${y50}" x2="${W-marginR}" y2="${y50}" stroke="#14332A" stroke-opacity="0.35" stroke-dasharray="3,3"/>
+      <polygon points="${areaPts}" fill="#14332A" fill-opacity="0.22" clip-path="url(#clipAbove)"/>
+      <polygon points="${areaPts}" fill="#A8452F" fill-opacity="0.18" clip-path="url(#clipBelow)"/>
+      <polyline points="${linePts}" fill="none" stroke="#14332A" stroke-width="2"/>
+      <circle cx="${x(n-1)}" cy="${y(points[n-1].wp)}" r="4" fill="#C99A3E" stroke="#14332A" stroke-width="1.5"/>
+      <text x="${marginL-6}" y="${marginT+4}" text-anchor="end" font-family="monospace" font-size="10" fill="#5B5648">100</text>
+      <text x="${marginL-6}" y="${y50+3}" text-anchor="end" font-family="monospace" font-size="10" fill="#5B5648">50</text>
+      <text x="${marginL-6}" y="${H-marginB}" text-anchor="end" font-family="monospace" font-size="10" fill="#5B5648">0</text>
+      <text x="${marginL}" y="14" text-anchor="start" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="700" font-size="14" fill="#14332A">${homeLabel}</text>
+      <text x="${marginL}" y="${H-6}" text-anchor="start" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="700" font-size="14" fill="#A8452F">${awayLabel}</text>
+      ${gridlines.map(g => `<text x="${g.x}" y="${H-marginB+14}" text-anchor="middle" font-family="monospace" font-size="10" fill="#5B5648">${g.label}</text>`).join('')}
+      <line id="hoverGuide" x1="${x(n-1)}" y1="${marginT}" x2="${x(n-1)}" y2="${H-marginB}" stroke="#201D18" stroke-width="1" stroke-dasharray="2,2" opacity="0"/>
+      <circle id="hoverDot" cx="0" cy="0" r="4.5" fill="#201D18" opacity="0"/>
+    </svg>
+    <div id="chartTooltip"></div>`;
+  document.getElementById('chartSvgWrap').innerHTML = svg;
+}
+
+function nearestChartPointIndex(svgX) {
+  let nearestIdx = 0, nearestDist = Infinity;
+  for (let i = 0; i < chartPoints.length; i++) {
+    const d = Math.abs(chartPoints[i]._x - svgX);
+    if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
+  }
+  return nearestIdx;
+}
+
+function handleChartHover(evt) {
+  if (!chartPoints.length) return;
+  evt.preventDefault();
+  const svg = document.getElementById('wpChartSvg');
+  const rect = svg.getBoundingClientRect();
+  const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+  const fracX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const idx = nearestChartPointIndex(fracX * CHART_W);
+  const p = chartPoints[idx];
+  const prev = idx > 0 ? chartPoints[idx - 1] : null;
+
+  document.getElementById('hoverGuide').setAttribute('x1', p._x);
+  document.getElementById('hoverGuide').setAttribute('x2', p._x);
+  document.getElementById('hoverGuide').setAttribute('opacity', 1);
+  const dot = document.getElementById('hoverDot');
+  dot.setAttribute('cx', p._x); dot.setAttribute('cy', p._y); dot.setAttribute('opacity', 1);
+
+  const homeLabel = chartMeta.home_team || 'Home', awayLabel = chartMeta.away_team || 'Away';
+  const wpLabel = p.wp >= 0.5 ? homeLabel : awayLabel;
+  const wpPct = (p.wp >= 0.5 ? p.wp : 1 - p.wp) * 100;
+  const situationLine = p.final
+    ? 'Final'
+    : ordinal(p.inning) + ' ' + (p.half === 'T' ? 'Top' : 'Bottom') + ' &middot; ' + p.outs + ' out' + (p.outs===1?'':'s') + ' &middot; ' + basesDescFromKey(p.bases);
+  const playLine = p.play ? (EVENT_LABELS[p.play] || p.play) : 'Game start';
+
+  let wpaHtml = '';
+  if (prev) {
+    const deltaHome = p.wp - prev.wp;
+    const wpaTeam = deltaHome >= 0 ? homeLabel : awayLabel;
+    const wpaPct = Math.abs(deltaHome) * 100;
+    wpaHtml = '<div style="font-family:var(--mono);margin-top:3px;color:var(--brass)">WPA ' + wpaTeam + ' +' + wpaPct.toFixed(1) + '%</div>';
+  }
+
+  const tt = document.getElementById('chartTooltip');
+  tt.innerHTML =
+    '<div style="font-weight:700;margin-bottom:3px">' + playLine + '</div>' +
+    '<div style="color:#5B5648">' + situationLine + '</div>' +
+    '<div style="font-family:var(--mono);margin-top:5px">' + awayLabel + ' ' + p.awayScore + ' &ndash; ' + homeLabel + ' ' + p.homeScore + '</div>' +
+    '<div style="font-family:var(--mono);font-weight:700;color:var(--field)">' + wpLabel + ' ' + wpPct.toFixed(1) + '%</div>' +
+    wpaHtml;
+  tt.style.display = 'block';
+  const containerWidth = rect.width;
+  const pxPos = (p._x / CHART_W) * containerWidth;
+  let left = pxPos + 12;
+  if (left + 175 > containerWidth) left = pxPos - 187;
+  tt.style.left = Math.max(0, left) + 'px';
+  tt.style.top = '2px';
+}
+
+function hideChartTooltip() {
+  const guide = document.getElementById('hoverGuide');
+  const dot = document.getElementById('hoverDot');
+  if (guide) guide.setAttribute('opacity', 0);
+  if (dot) dot.setAttribute('opacity', 0);
+  const tt = document.getElementById('chartTooltip');
+  if (tt) tt.style.display = 'none';
+}
+
+async function handleChartUpload(evt) {
+  const file = evt.target.files && evt.target.files[0];
+  const msgEl = document.getElementById('chartMsg');
+  if (!file) return;
+  if (allRecords.length === 0) {
+    msgEl.textContent = 'Load at least one box score on the Data tab first \u2014 the chart needs a model to run the game through.';
+    evt.target.value = '';
+    return;
+  }
+  try {
+    const text = await file.text();
+    const { records, diagnostics } = parseBoxscoreXML(text, file.name);
+    if (records.length === 0) throw new Error('no usable plate appearances found in this file');
+    const points = computeWpTrajectory(records, diagnostics.home_runs, diagnostics.away_runs);
+    renderWpChart(points, diagnostics);
+    msgEl.textContent = file.name + ': charted ' + records.length + ' plate appearances.' +
+      (diagnostics.score_mismatch ? ' (note: score mismatch vs. official linescore)' : '');
+  } catch (e) {
+    msgEl.textContent = '\u26a0\ufe0f Could not chart this file: ' + (e && e.message ? e.message : e);
+  } finally {
+    evt.target.value = '';
+  }
+}
+
+function exportData() {
+  const payload = JSON.stringify({ exportedAt: new Date().toISOString(), addedGames }, null, 0);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ccl_win_probability_data.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById('uploadMsg').textContent =
+    'Exported ' + addedGames.length + ' added game(s) to ccl_win_probability_data.json.';
+}
+
+async function handleImport(evt) {
+  const file = evt.target.files && evt.target.files[0];
+  const msgEl = document.getElementById('uploadMsg');
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const incoming = Array.isArray(parsed) ? parsed : Array.isArray(parsed.addedGames) ? parsed.addedGames : null;
+    if (!incoming) throw new Error('unrecognized file format (expected an export from this tool)');
+
+    const existingNames = new Set([...allGamesMeta.map(g=>g.file)]);
+    const existingContentKeys = new Set(allGamesMeta.map(g => gameContentKey(g)).filter(Boolean));
+    let added = 0, skipped = 0;
+    for (const g of incoming) {
+      if (!g || !g.file || !g.records || !g.diagnostics) { skipped++; continue; }
+      if (existingNames.has(g.file)) { skipped++; continue; }
+      const ck = gameContentKey(g.diagnostics);
+      if (ck && existingContentKeys.has(ck)) { skipped++; continue; }
+      addedGames.push(g);
+      existingNames.add(g.file);
+      if (ck) existingContentKeys.add(ck);
+      added++;
+    }
+
+    if (added > 0) {
+      applyAllGames();
+      const saved = await saveAddedGames(addedGames);
+      updateStorageNote();
+      msgEl.textContent = 'Imported ' + added + ' game(s)' + (skipped ? ', skipped ' + skipped + ' duplicate/invalid entr' + (skipped===1?'y':'ies') : '') + '.' +
+        (saved ? '' : ' \u26a0\ufe0f Could not save for next time (' + storageBackend + ' storage unavailable).');
+    } else {
+      msgEl.textContent = 'Nothing new to import (' + skipped + ' duplicate or invalid entries skipped).';
+    }
+  } catch (e) {
+    msgEl.textContent = '\u26a0\ufe0f Could not import file: ' + (e && e.message ? e.message : e);
+  } finally {
+    evt.target.value = '';
+  }
+}
+
+async function resetAddedGames() {
+  try {
+    addedGames = [];
+    applyAllGames();
+    const cleared = await clearAddedGames();
+    updateStorageNote();
+    let msg = storageBackend === 'shared' ? 'Added games cleared for everyone.' : 'Added games cleared.';
+    if (!cleared) msg += ' (Could not clear saved storage \u2014 it may come back on reload.)';
+    document.getElementById('uploadMsg').textContent = msg;
+  } catch (e) {
+    document.getElementById('uploadMsg').textContent =
+      '\u26a0\ufe0f Something went wrong clearing games: ' + (e && e.message ? e.message : e);
+  }
+}
+
+async function initData() {
+  try {
+    applyAllGames();                    // instant paint with whatever's already in memory
+    addedGames = await loadAddedGames();
+    updateStorageNote();
+    applyAllGames();                    // re-render once storage has had a chance to answer
+  } catch (e) {
+    const el = document.getElementById('uploadMsg');
+    if (el) el.textContent = '\u26a0\ufe0f Startup error: ' + (e && e.message ? e.message : e) +
+      '. Open the browser console for the full error.';
+  }
+}
+
+initData();
+
+window.addEventListener('error', function(e) {
+  const el = document.getElementById('uploadMsg');
+  if (el) el.textContent = '\u26a0\ufe0f Unexpected error: ' + (e.error && e.error.message ? e.error.message : e.message) +
+    '. Open the browser console for the full error (Safari: Develop \u2192 Show JavaScript Console).';
+});
+</script>
+</body>
+</html>
